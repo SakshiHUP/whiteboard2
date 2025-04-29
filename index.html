@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Whiteboard with Calculator</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            margin: 0;
+            background-color: #e8f0fe;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        #toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            background: #ffffff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #container {
+            display: flex;
+            gap: 20px;
+            position: relative;
+        }
+        canvas {
+            background-color: white;
+            border: 3px solid #333;
+            cursor: crosshair;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        #calculator {
+            width: 220px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        #calcDisplay {
+            width: 100%;
+            height: 50px;
+            text-align: right;
+            font-size: 20px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+        }
+        .calc-button {
+            width: 50px;
+            height: 50px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+        }
+        .calc-button:hover {
+            background: #0056b3;
+        }
+        @media (max-width: 1000px) {
+    #container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    canvas {
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    #calculator {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .calc-buttons {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    button, .calc-button {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 500px) {
+    #toolbar {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .calc-button {
+        width: 100%;
+        height: 40px;
+        font-size: 16px;
+    }
+
+    #calcDisplay {
+        font-size: 18px;
+    }
+}
+
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <input type="color" id="colorPicker">
+        <input type="color" id="highlightColorPicker" value="#ffff00">
+        <input type="range" id="sizePicker" min="1" max="10" value="2">
+        <button onclick="selectTool('pen')">Pen</button>
+        <button onclick="selectTool('highlighter')">Highlighter</button>
+        <button onclick="selectTool('eraser')">Eraser</button>
+        <button onclick="clearCanvas()">Clear</button>
+        
+    </div>
+
+    <div id="container">
+        <canvas id="whiteboard" width="800" height="500"></canvas>
+        <div id="calculator">
+            <input type="text" id="calcDisplay" disabled>
+            <div class="calc-buttons">
+                <button class="calc-button" onclick="clearCalc()">C</button>
+                <button class="calc-button" onclick="deleteDigit()">Cut</button>
+                <button class="calc-button" onclick="addToCalc('000')">000</button>
+                <button class="calc-button" onclick="addToCalc('/')">/</button>
+                <button class="calc-button" onclick="addToCalc('7')">7</button>
+                <button class="calc-button" onclick="addToCalc('8')">8</button>
+                <button class="calc-button" onclick="addToCalc('9')">9</button>
+                <button class="calc-button" onclick="addToCalc('*')">*</button>
+                <button class="calc-button" onclick="addToCalc('4')">4</button>
+                <button class="calc-button" onclick="addToCalc('5')">5</button>
+                <button class="calc-button" onclick="addToCalc('6')">6</button>
+                <button class="calc-button" onclick="addToCalc('-')">-</button>
+                <button class="calc-button" onclick="addToCalc('1')">1</button>
+                <button class="calc-button" onclick="addToCalc('2')">2</button>
+                <button class="calc-button" onclick="addToCalc('3')">3</button>
+                <button class="calc-button" onclick="addToCalc('+')">+</button>
+                <button class="calc-button" onclick="addToCalc('0')">0</button>
+                <button class="calc-button" onclick="addToCalc('.')">.</button>
+                <button class="calc-button" onclick="calculateResult()">=</button>
+                <button class="calc-button" onclick="showHistory()">His</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+const canvas = document.getElementById('whiteboard');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        let tool = 'pen';
+
+        function selectTool(selectedTool) {
+            tool = selectedTool;
+        }
+
+    // Enable dragging
+    let offsetX, offsetY, isDragging = false
+
+
+        canvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+            ctx.lineWidth = document.getElementById('sizePicker').value;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : (tool === 'highlighter' ? document.getElementById('highlightColorPicker').value : document.getElementById('colorPicker').value);
+            ctx.globalAlpha = tool === 'highlighter' ? 0.5 : 1.0;
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            ctx.globalAlpha = 1.0;
+        });
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function downloadCanvas() {
+            const link = document.createElement('a');
+            link.download = 'whiteboard.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        //calculator js
+        let calcDisplay = document.getElementById("calcDisplay");
+let calcHistory = [];
+
+function addToCalc(value) {
+    calcDisplay.value += value;
+}
+
+function clearCalc() {
+    calcDisplay.value = "";
+}
+
+function deleteDigit() {
+    calcDisplay.value = calcDisplay.value.slice(0, -1);
+}
+
+function calculateResult() {
+    try {
+        let result = eval(calcDisplay.value);
+        calcHistory.push(calcDisplay.value + " = " + result);
+        calcDisplay.value = result;
+    } catch (e) {
+        alert("Invalid Expression");
+    }
+}
+
+function showHistory() {
+    let historyStr = calcHistory.length ? calcHistory.join("\n") : "No history";
+    alert(historyStr);
+}
+
+    </script>
+</body>
+</html>
